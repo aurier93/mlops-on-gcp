@@ -177,7 +177,7 @@ with DAG(
                 MOD(ABS(FARM_FINGERPRINT(unique_key)), 2500) = 5
                 """.format(bql)
 
-    #  2: Fill in arguments for bq_train_data_op and bq_valid_data_op
+    # Fill in arguments for bq_train_data_op and bq_valid_data_op
     bq_train_data_op = BigQueryOperator(
         task_id="bq_train_data_task",
         bql=bql_train,
