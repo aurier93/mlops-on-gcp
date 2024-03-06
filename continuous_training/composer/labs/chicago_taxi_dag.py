@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """"DAG definition for Chicago Taxifare pipeline.
-    This pipeline was created for the ML Pipelines on Google Cloud course on Coursera."""
+    This pipeline was created for use as a demo in the Data Engineering
+    on GCP Course"""
 
 import datetime
 import logging
@@ -87,10 +88,12 @@ JOB_DIR = BUCKET + "/jobs"
 
 model = "chicago_taxi_trips"
 
-# TODO 1: Instaniate the DAG Object
+#  1: Instaniate the DAG Object
 with DAG(
-        #ADD YOUR CODE HERE
-        ) as dag:
+        'chicago_taxi_dag',
+        catchup=False,
+        default_args=DEFAULT_ARGS,
+        schedule_interval='@weekly') as dag:
 
     # SQL Query to check for fresh data. Data is considered "fresh" if it was
     # ingested within the past 90 days.
@@ -174,19 +177,25 @@ with DAG(
                 MOD(ABS(FARM_FINGERPRINT(unique_key)), 2500) = 5
                 """.format(bql)
 
-    # TODO 2: Fill in arguments for bq_train_data_op and bq_valid_data_op
+    #  2: Fill in arguments for bq_train_data_op and bq_valid_data_op
     bq_train_data_op = BigQueryOperator(
+        task_id="bq_train_data_task",
+        bql=bql_train,
         destination_dataset_table="{}.{}_train_data"
                 .format(DESTINATION_DATASET, model.replace(".", "_")),
         write_disposition="WRITE_TRUNCATE",  # specify to truncate on writes
-        #ADD YOUR CODE HERE
+        use_legacy_sql=False,
+        dag=dag
     )
 
     bq_valid_data_op = BigQueryOperator(
+        task_id="bq_eval_data_task",
+        bql=bql_valid,
         destination_dataset_table="{}.{}_valid_data"
                 .format(DESTINATION_DATASET, model.replace(".", "_")),
         write_disposition="WRITE_TRUNCATE",  # specify to truncate on writes
-        #ADD YOUR CODE HERE
+        use_legacy_sql=False,
+        dag=dag
     )
 
     train_files = BUCKET + "/chicago_taxi/data/train/"
@@ -225,10 +234,12 @@ with DAG(
                      "v_{0}"
                      .format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")))
 
-    # TODO 3: Fill in arguments for python_new_version_name_op
+    #  3: Fill in arguments for python_new_version_name_op
     python_new_version_name_op = PythonOperator(
+        task_id="python_new_version_name_task",
+        python_callable=set_new_version_name,
         provide_context=True,
-        #ADD YOUR CODE HERE
+        dag=dag
         )
 
     # Arguments for MLEngineTrainingOperator
@@ -289,11 +300,13 @@ with DAG(
                 """.format(PROJECT_ID, DESTINATION_DATASET, 'model_metrics',
                            Variable.get("NEW_VERSION_NAME"))
 
-    # TODO 4: Create bq_check_rmse_query_op
+    #  4: Create bq_check_rmse_query_op
     bq_check_rmse_query_op = BigQueryValueCheckOperator(
+        task_id="bq_value_check_rmse_task",
+        sql=model_check_sql,
+        pass_value=0,
         tolerence=0,
         use_legacy_sql=False,
-        #ADD YOUR CODE HERE
     )
 
     VALUE_ERROR_MESSAGE = b64e(b'Error. Model RMSE > 10.0')
@@ -435,9 +448,10 @@ with DAG(
         messages=[{'data': SUCCESS_MESSAGE.decode()}]
     )
 
-    # TODO 5: Finish writing dependecies between bq_check_data_op and downstream ops.
-    # Feel free to split across multiple dependecies if you wish.
-    bq_check_data_op >> #ADD YOUR CODE HERE.
+    #  5: Finish writing dependecies between bq_check_data_op and downstream ops.
+    bq_check_data_op >> publish_if_failed_check_op
+    bq_check_data_op >> python_new_version_name_op
+    bq_check_data_op >> [bq_train_data_op, bq_valid_data_op]
 
     bq_train_data_op >> bq_export_train_csv_op
     bq_valid_data_op >> bq_export_valid_csv_op
