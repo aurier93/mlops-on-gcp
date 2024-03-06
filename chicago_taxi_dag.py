@@ -88,7 +88,7 @@ JOB_DIR = BUCKET + "/jobs"
 
 model = "chicago_taxi_trips"
 
-# TODO 1: Instaniate the DAG Object
+# 1: Instaniate the DAG Object
 with DAG(
         'chicago_taxi_dag',
         catchup=False,
