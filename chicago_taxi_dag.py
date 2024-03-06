@@ -177,7 +177,7 @@ with DAG(
                 MOD(ABS(FARM_FINGERPRINT(unique_key)), 2500) = 5
                 """.format(bql)
 
-    # TODO 2: Fill in arguments for bq_train_data_op and bq_valid_data_op
+    #  2: Fill in arguments for bq_train_data_op and bq_valid_data_op
     bq_train_data_op = BigQueryOperator(
         task_id="bq_train_data_task",
         bql=bql_train,
@@ -234,7 +234,7 @@ with DAG(
                      "v_{0}"
                      .format(datetime.datetime.now().strftime("%Y%m%d%H%M%S")))
 
-    # TODO 3: Fill in arguments for python_new_version_name_op
+    #  3: Fill in arguments for python_new_version_name_op
     python_new_version_name_op = PythonOperator(
         task_id="python_new_version_name_task",
         python_callable=set_new_version_name,
@@ -300,7 +300,7 @@ with DAG(
                 """.format(PROJECT_ID, DESTINATION_DATASET, 'model_metrics',
                            Variable.get("NEW_VERSION_NAME"))
 
-    # TODO 4: Create bq_check_rmse_query_op
+    #  4: Create bq_check_rmse_query_op
     bq_check_rmse_query_op = BigQueryValueCheckOperator(
         task_id="bq_value_check_rmse_task",
         sql=model_check_sql,
@@ -448,7 +448,7 @@ with DAG(
         messages=[{'data': SUCCESS_MESSAGE.decode()}]
     )
 
-    # TODO 5: Finish writing dependecies between bq_check_data_op and downstream ops.
+    #  5: Finish writing dependecies between bq_check_data_op and downstream ops.
     bq_check_data_op >> publish_if_failed_check_op
     bq_check_data_op >> python_new_version_name_op
     bq_check_data_op >> [bq_train_data_op, bq_valid_data_op]
